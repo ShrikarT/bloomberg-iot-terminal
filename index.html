@@ -1,0 +1,2066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BLBRG // TELEMETRY TERMINAL - IoT Sensor Surveillance</title>
+
+  <!-- Typography: JetBrains Mono & Barlow Condensed -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,500;0,600;0,700;1,600&family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ==========================================================================
+       BLOOMBERG TERMINAL CORE STYLES & COLOR SYSTEM
+       Strict high-density dark mode. Near-black canvas, 1px hairlines,
+       phosphor amber, cyan, green, and crimson alerts.
+       ========================================================================== */
+    :root {
+      --bg-base: #0a0c10;
+      --bg-surface: #10131c;
+      --bg-panel: #131722;
+      --bg-header: #181c28;
+      --bg-highlight: #1e2333;
+      --bg-active: #252b3d;
+
+      --border-hairline: #1e2433;
+      --border-accent: #2c3345;
+      --border-focus: #ff9800;
+
+      --text-main: #e0e3ed;
+      --text-muted: #788299;
+      --text-dim: #4e5668;
+      --text-bright: #ffffff;
+
+      /* Terminal Phosphor Emissives */
+      --amber: #ff9800;
+      --amber-glow: rgba(255, 152, 0, 0.2);
+      --cyan: #00e5ff;
+      --cyan-glow: rgba(0, 229, 255, 0.2);
+      --green: #00e676;
+      --green-glow: rgba(0, 230, 118, 0.2);
+      --red: #ff3d57;
+      --red-glow: rgba(255, 61, 87, 0.2);
+
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --font-condensed: 'Barlow Condensed', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.35;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Subdued CRT grid texture */
+    .crt-grid {
+      background-size: 24px 24px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: #262c3d; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--amber); }
+
+    /* Blinking & Pulsing animations */
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .cursor-blink { animation: blink 0.9s infinite; }
+
+    @keyframes pulse {
+      0% { opacity: 0.3; transform: scale(0.95); }
+      50% { opacity: 1; transform: scale(1.05); }
+      100% { opacity: 0.3; transform: scale(0.95); }
+    }
+    .beacon-pulse { animation: pulse 1.4s infinite ease-in-out; }
+
+    /* Common Terminal Utilities */
+    .tabular { font-variant-numeric: tabular-nums lining-nums; }
+    .hairline-b { border-bottom: 1px solid var(--border-hairline); }
+    .hairline-t { border-top: 1px solid var(--border-hairline); }
+    .hairline-r { border-right: 1px solid var(--border-hairline); }
+    .hairline-l { border-left: 1px solid var(--border-hairline); }
+    .hairline-all { border: 1px solid var(--border-hairline); }
+
+    button, input, select {
+      font-family: inherit;
+      color: inherit;
+      font-size: inherit;
+      background: none;
+      border: none;
+      outline: none;
+    }
+
+    .btn-term {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-accent);
+      color: var(--text-main);
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: none;
+    }
+    .btn-term:hover {
+      background: var(--bg-highlight);
+      border-color: var(--amber);
+      color: var(--amber);
+    }
+    .btn-term:active {
+      background: var(--amber);
+      color: #000;
+    }
+    .btn-term.active {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: #000;
+      font-weight: 700;
+    }
+    .btn-term-cyan.active {
+      background: var(--cyan);
+      border-color: var(--cyan);
+      color: #000;
+    }
+    .btn-term-green.active {
+      background: var(--green);
+      border-color: var(--green);
+      color: #000;
+    }
+    .btn-term-red {
+      border-color: rgba(255,61,87,0.4);
+      color: var(--red);
+    }
+    .btn-term-red:hover {
+      background: var(--red);
+      color: #000;
+      border-color: var(--red);
+    }
+
+    /* Micro status badges */
+    .term-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 1px 4px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid currentColor;
+      line-height: 1.1;
+    }
+    .badge-amber { color: var(--amber); background: rgba(255, 152, 0, 0.08); }
+    .badge-cyan  { color: var(--cyan);  background: rgba(0, 229, 255, 0.08); }
+    .badge-green { color: var(--green); background: rgba(0, 230, 118, 0.08); }
+    .badge-red   { color: var(--red);   background: rgba(255, 61, 87, 0.08); }
+    .badge-muted { color: var(--text-muted); border-color: var(--border-accent); }
+
+    /* Layout Containers */
+    #top-bar {
+      height: 32px;
+      background: #080a0e;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      z-index: 100;
+      flex-shrink: 0;
+    }
+
+    #macro-ribbon {
+      height: 24px;
+      background: #0d1017;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 8px;
+      font-size: 10px;
+      z-index: 90;
+      flex-shrink: 0;
+    }
+
+    #terminal-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    #tickers-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 900px) {
+      #tickers-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .ticker-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-hairline);
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 96px;
+      position: relative;
+    }
+    .ticker-card:hover {
+      border-color: var(--border-accent);
+    }
+    .ticker-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-hairline);
+      padding-bottom: 4px;
+    }
+    .ticker-title {
+      font-family: var(--font-condensed);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ticker-value-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 4px 0;
+    }
+    .ticker-main-val {
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .ticker-unit {
+      font-size: 13px;
+      font-weight: 600;
+      margin-left: 4px;
+    }
+    .ticker-delta {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border: 1px solid;
+    }
+    .ticker-range-bar {
+      height: 4px;
+      background: #191e2b;
+      position: relative;
+      margin: 4px 0 2px 0;
+    }
+    .ticker-needle {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      width: 2px;
+      background: #fff;
+      box-shadow: 0 0 4px currentColor;
+      transition: left 0.1s linear;
+    }
+    .ticker-substats {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9.5px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-hairline);
+      padding-top: 3px;
+    }
+
+    /* Main Chart Grid */
+    #charts-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      flex: 1;
+      min-height: 280px;
+    }
+    @media (max-width: 1024px) {
+      #charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-hairline);
+      display: flex;
+      flex-direction: column;
+      min-height: 240px;
+    }
+    .chart-panel-header {
+      height: 26px;
+      background: #161a26;
+      border-bottom: 1px solid var(--border-hairline);
+      padding: 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+    .chart-title {
+      font-family: var(--font-condensed);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chart-canvas-container {
+      flex: 1;
+      position: relative;
+      background: #0d1017;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+    .chart-canvas-container canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .chart-tooltip {
+      position: absolute;
+      display: none;
+      pointer-events: none;
+      background: #000;
+      border: 1px solid;
+      padding: 3px 6px;
+      font-size: 9.5px;
+      font-weight: 600;
+      z-index: 50;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+    }
+    .chart-footer {
+      height: 22px;
+      background: #11141e;
+      border-top: 1px solid var(--border-hairline);
+      padding: 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 9.5px;
+      color: var(--text-muted);
+    }
+
+    /* Bottom Stream Log Panel */
+    #log-panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-hairline);
+      display: flex;
+      flex-direction: column;
+      height: 175px;
+      min-height: 140px;
+      flex-shrink: 0;
+    }
+    #log-header {
+      height: 26px;
+      background: #161a26;
+      border-bottom: 1px solid var(--border-hairline);
+      padding: 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+    #log-table-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: auto;
+      background: #090b0f;
+    }
+    #log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      text-align: left;
+    }
+    #log-table thead {
+      position: sticky;
+      top: 0;
+      background: #131722;
+      border-bottom: 1px solid var(--border-hairline);
+      font-family: var(--font-condensed);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      z-index: 10;
+    }
+    #log-table th, #log-table td {
+      padding: 3px 8px;
+      white-space: nowrap;
+      border-bottom: 1px solid #161b26;
+    }
+    #log-table tbody tr:hover {
+      background: #191f2e;
+    }
+    .cell-mono { font-family: var(--font-mono); }
+
+    /* Footer status */
+    #bottom-bar {
+      height: 22px;
+      background: #07090c;
+      border-top: 1px solid var(--border-hairline);
+      padding: 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 9.5px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    /* Modal / Config Drawer */
+    #config-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(5, 7, 10, 0.85);
+      backdrop-filter: blur(2px);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-box {
+      width: 520px;
+      max-width: 95vw;
+      background: #131722;
+      border: 1px solid var(--amber);
+      box-shadow: 0 0 25px rgba(255, 152, 0, 0.25);
+    }
+    .modal-header {
+      background: #191e2b;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border-accent);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--amber);
+      font-family: var(--font-condensed);
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .modal-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .form-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .form-input {
+      background: #090b0f;
+      border: 1px solid var(--border-accent);
+      color: var(--amber);
+      padding: 6px 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .form-input:focus {
+      border-color: var(--amber);
+      box-shadow: 0 0 6px var(--amber-glow);
+    }
+    .modal-footer {
+      background: #0e1118;
+      border-top: 1px solid var(--border-hairline);
+      padding: 8px 12px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body class="crt-grid">
+
+  <!-- ========================================================================
+       TOP STATUS BAR & COMMAND PROMPT
+       ======================================================================== -->
+  <header id="top-bar" class="hairline-b">
+    <!-- Brand / System Title -->
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="background: var(--amber); color: #000; padding: 1px 6px; font-family: var(--font-condensed); font-size: 13px; font-weight: 700; letter-spacing: 0.06em;">
+        BLBRG // TELEMETRY TERMINAL
+      </div>
+      <span class="term-badge badge-amber">PROD v4.20</span>
+      <span style="color: var(--text-dim);">|</span>
+      <span style="color: var(--text-muted); font-size: 10px;">NODE-ESP32-TX</span>
+    </div>
+
+    <!-- Center Bloomberg Interactive Prompt -->
+    <div style="display: flex; align-items: center; background: #0c0f17; border: 1px solid var(--border-hairline); padding: 1px 6px; width: 340px; max-width: 32vw;">
+      <span style="color: var(--amber); font-weight: 700; font-size: 10px; margin-right: 4px;">SYS_CMD&gt;</span>
+      <input id="terminal-input" type="text" value="SYS:CH_FEEDS <GO>" style="flex: 1; color: var(--amber); font-size: 11px; text-transform: uppercase;" spellcheck="false" autocomplete="off"/>
+      <span class="cursor-blink" style="display: inline-block; width: 6px; height: 12px; background: var(--amber); margin-left: 2px;"></span>
+      <button id="btn-go" class="btn-term" style="background: var(--amber); color: #000; border-color: var(--amber); padding: 0 6px; margin-left: 6px;">&lt;GO&gt;</button>
+    </div>
+
+    <!-- Right Controls: Clocks, Connection Pulse, Config Trigger -->
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <!-- Clocks -->
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 10px;">
+        <span style="color: var(--green); font-weight: 700;">UTC:</span>
+        <span id="clock-utc" class="tabular" style="color: var(--text-bright);">00:00:00</span>
+        <span style="color: var(--border-accent);">|</span>
+        <span style="color: var(--cyan); font-weight: 700;">LOC:</span>
+        <span id="clock-local" class="tabular" style="color: var(--text-bright);">00:00:00</span>
+      </div>
+
+      <!-- Live Heartbeat Indicator -->
+      <div id="heartbeat-pill" style="display: flex; align-items: center; gap: 5px; background: #121824; border: 1px solid var(--border-accent); padding: 2px 6px;">
+        <span id="beacon-dot" class="beacon-pulse" style="width: 7px; height: 7px; background: var(--green); display: inline-block;"></span>
+        <span id="conn-status-text" style="color: var(--green); font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em;">LIVE 15s</span>
+        <span id="countdown-timer" class="tabular" style="color: var(--text-muted); font-size: 9px;">(15s)</span>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div style="display: flex; gap: 3px;">
+        <button id="btn-audio-toggle" class="btn-term" title="Toggle Terminal Audio Clicks">
+          <span id="audio-icon">AUDIO: OFF</span>
+        </button>
+        <button id="btn-open-config" class="btn-term active" title="Open Channel Configuration (F2)">
+          <span>[CONFIG]</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================
+       SECONDARY TELEMETRY RIBBON
+       ======================================================================== -->
+  <div id="macro-ribbon" class="hairline-b">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: var(--amber); font-weight: 700;">CHANNEL:</span>
+      <span id="ribbon-channel-id" style="color: var(--text-bright); font-weight: 600;">#CONNECTING...</span>
+      <span id="mode-badge" class="term-badge badge-green">LIVE FEED</span>
+      <span style="color: var(--text-dim);">|</span>
+      <span style="color: var(--text-muted);">SOURCE: <span id="ribbon-source-url" style="color: var(--cyan);">api.thingspeak.com</span></span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; color: var(--text-muted);">
+      <span>RTT: <span id="stat-rtt" class="tabular" style="color: var(--green); font-weight: 700;">-- ms</span></span>
+      <span>ENTRIES: <span id="stat-entries" class="tabular" style="color: var(--text-bright);">0</span></span>
+      <span>BUFFER: <span id="stat-buffer" class="tabular" style="color: var(--amber);">50 PTS</span></span>
+      <span>PACKET LOSS: <span id="stat-loss" class="tabular" style="color: var(--green);">0.0%</span></span>
+      <button id="btn-refresh-now" class="btn-term" style="padding: 0 4px; font-size: 9px;">FORCED SYNC [F5]</button>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MAIN TERMINAL VIEWPORT
+       ======================================================================== -->
+  <main id="terminal-body">
+
+    <!-- ROW 1: 3 LARGE NUMERIC TICKER PANELS WITH DELTAS -->
+    <section id="tickers-row">
+
+      <!-- TICKER 1: TEMPERATURE -->
+      <article class="ticker-card" style="border-top: 2px solid var(--amber);">
+        <div class="ticker-header">
+          <div class="ticker-title" style="color: var(--amber);">
+            <span style="width: 6px; height: 6px; background: var(--amber); display: inline-block;"></span>
+            <span>FIELD 1: TEMPERATURE</span>
+            <span style="color: var(--text-dim); font-size: 10px;">[DS18B20 / 1-WIRE]</span>
+          </div>
+          <span id="temp-status-badge" class="term-badge badge-amber">NOMINAL</span>
+        </div>
+
+        <div class="ticker-value-row">
+          <div style="display: flex; align-items: baseline;">
+            <span id="val-temp" class="ticker-main-val tabular" style="color: var(--amber);">--.--</span>
+            <span class="ticker-unit" style="color: var(--amber);">°C</span>
+          </div>
+          <div id="delta-temp-badge" class="ticker-delta badge-muted tabular">
+            <span id="delta-temp-arrow">--</span>
+            <span id="delta-temp-text">0.00 °C (0.0%)</span>
+          </div>
+        </div>
+
+        <!-- Range indicator bar -->
+        <div class="ticker-range-bar">
+          <div id="needle-temp" class="ticker-needle" style="left: 50%; color: var(--amber);"></div>
+        </div>
+
+        <div class="ticker-substats tabular">
+          <span>MIN: <b id="min-temp" style="color: var(--amber);">--</b></span>
+          <span>MAX: <b id="max-temp" style="color: var(--amber);">--</b></span>
+          <span>AVG: <b id="avg-temp" style="color: var(--text-main);">--</b></span>
+          <span>σ: <b id="sigma-temp" style="color: var(--text-muted);">--</b></span>
+        </div>
+      </article>
+
+      <!-- TICKER 2: RELATIVE HUMIDITY -->
+      <article class="ticker-card" style="border-top: 2px solid var(--cyan);">
+        <div class="ticker-header">
+          <div class="ticker-title" style="color: var(--cyan);">
+            <span style="width: 6px; height: 6px; background: var(--cyan); display: inline-block;"></span>
+            <span>FIELD 2: RELATIVE HUMIDITY</span>
+            <span style="color: var(--text-dim); font-size: 10px;">[DHT22 / GPIO4]</span>
+          </div>
+          <span id="hum-status-badge" class="term-badge badge-cyan">NOMINAL</span>
+        </div>
+
+        <div class="ticker-value-row">
+          <div style="display: flex; align-items: baseline;">
+            <span id="val-hum" class="ticker-main-val tabular" style="color: var(--cyan);">--.-</span>
+            <span class="ticker-unit" style="color: var(--cyan);">% RH</span>
+          </div>
+          <div id="delta-hum-badge" class="ticker-delta badge-muted tabular">
+            <span id="delta-hum-arrow">--</span>
+            <span id="delta-hum-text">0.0 % (0.0%)</span>
+          </div>
+        </div>
+
+        <!-- Range indicator bar -->
+        <div class="ticker-range-bar">
+          <div id="needle-hum" class="ticker-needle" style="left: 50%; color: var(--cyan);"></div>
+        </div>
+
+        <div class="ticker-substats tabular">
+          <span>MIN: <b id="min-hum" style="color: var(--cyan);">--</b></span>
+          <span>MAX: <b id="max-hum" style="color: var(--cyan);">--</b></span>
+          <span>AVG: <b id="avg-hum" style="color: var(--text-main);">--</b></span>
+          <span>DEW PT: <b id="dew-pt" style="color: var(--cyan);">--</b></span>
+        </div>
+      </article>
+
+      <!-- TICKER 3: ULTRASONIC DISTANCE -->
+      <article class="ticker-card" style="border-top: 2px solid var(--green);">
+        <div class="ticker-header">
+          <div class="ticker-title" style="color: var(--green);">
+            <span style="width: 6px; height: 6px; background: var(--green); display: inline-block;"></span>
+            <span>FIELD 3: ULTRASONIC DISTANCE</span>
+            <span style="color: var(--text-dim); font-size: 10px;">[HC-SR04 / US]</span>
+          </div>
+          <span id="dist-status-badge" class="term-badge badge-green">TARGET IN CONE</span>
+        </div>
+
+        <div class="ticker-value-row">
+          <div style="display: flex; align-items: baseline;">
+            <span id="val-dist" class="ticker-main-val tabular" style="color: var(--green);">---.-</span>
+            <span class="ticker-unit" style="color: var(--green);">cm</span>
+          </div>
+          <div id="delta-dist-badge" class="ticker-delta badge-muted tabular">
+            <span id="delta-dist-arrow">--</span>
+            <span id="delta-dist-text">0.0 cm (0.0%)</span>
+          </div>
+        </div>
+
+        <!-- Range indicator bar -->
+        <div class="ticker-range-bar">
+          <div id="needle-dist" class="ticker-needle" style="left: 50%; color: var(--green);"></div>
+        </div>
+
+        <div class="ticker-substats tabular">
+          <span>MIN: <b id="min-dist" style="color: var(--green);">--</b></span>
+          <span>MAX: <b id="max-dist" style="color: var(--green);">--</b></span>
+          <span>AVG: <b id="avg-dist" style="color: var(--text-main);">--</b></span>
+          <span>ECHO: <b id="echo-time" style="color: var(--green);">--</b></span>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ROW 2: MAIN GRID OF TIME-SERIES LINE CHARTS (ONE PER METRIC) -->
+    <section id="charts-grid">
+
+      <!-- CHART 1: TEMPERATURE TRACE -->
+      <div class="chart-panel">
+        <div class="chart-panel-header">
+          <div class="chart-title" style="color: var(--amber);">
+            <span>CH1 // TEMP HISTOGRAM &amp; VOL</span>
+          </div>
+          <div style="display: flex; gap: 3px;">
+            <button class="btn-term btn-chart-len active" data-len="30">30P</button>
+            <button class="btn-term btn-chart-len" data-len="50">50P</button>
+            <button class="btn-term btn-chart-autoscale active" data-chart="temp">[AUTO]</button>
+          </div>
+        </div>
+
+        <div class="chart-canvas-container" id="container-chart-temp">
+          <canvas id="canvas-temp"></canvas>
+          <div id="tooltip-temp" class="chart-tooltip" style="border-color: var(--amber); color: var(--amber);"></div>
+        </div>
+
+        <div class="chart-footer">
+          <span>BOUNDS: <span id="footer-bounds-temp">-- / --</span></span>
+          <span style="color: var(--amber); font-weight: 700;">DS18B20 1-WIRE</span>
+          <span>SMPL FREQ: 0.067Hz (15s)</span>
+        </div>
+      </div>
+
+      <!-- CHART 2: HUMIDITY DYNAMICS -->
+      <div class="chart-panel">
+        <div class="chart-panel-header">
+          <div class="chart-title" style="color: var(--cyan);">
+            <span>CH2 // HUMIDITY DYNAMICS</span>
+          </div>
+          <div style="display: flex; gap: 3px;">
+            <button class="btn-term btn-chart-len active" data-len="30">30P</button>
+            <button class="btn-term btn-chart-len" data-len="50">50P</button>
+            <button class="btn-term btn-chart-autoscale active" data-chart="hum">[AUTO]</button>
+          </div>
+        </div>
+
+        <div class="chart-canvas-container" id="container-chart-hum">
+          <canvas id="canvas-hum"></canvas>
+          <div id="tooltip-hum" class="chart-tooltip" style="border-color: var(--cyan); color: var(--cyan);"></div>
+        </div>
+
+        <div class="chart-footer">
+          <span>BOUNDS: <span id="footer-bounds-hum">-- / --</span></span>
+          <span style="color: var(--cyan); font-weight: 700;">DHT22 CALIBRATED</span>
+          <span>HUM_INDEX: NOMINAL</span>
+        </div>
+      </div>
+
+      <!-- CHART 3: ULTRASONIC DISTANCE & OBSTACLE WAVEFORM -->
+      <div class="chart-panel">
+        <div class="chart-panel-header">
+          <div class="chart-title" style="color: var(--green);">
+            <span>CH3 // DISTANCE &amp; ECHO CONE</span>
+          </div>
+          <div style="display: flex; gap: 3px;">
+            <button class="btn-term btn-chart-len active" data-len="30">30P</button>
+            <button class="btn-term btn-chart-len" data-len="50">50P</button>
+            <button class="btn-term btn-chart-autoscale active" data-chart="dist">[AUTO]</button>
+          </div>
+        </div>
+
+        <div class="chart-canvas-container" id="container-chart-dist">
+          <canvas id="canvas-dist"></canvas>
+          <div id="tooltip-dist" class="chart-tooltip" style="border-color: var(--green); color: var(--green);"></div>
+        </div>
+
+        <div class="chart-footer">
+          <span>BOUNDS: <span id="footer-bounds-dist">-- / --</span></span>
+          <span style="color: var(--green); font-weight: 700;">HC-SR04 SONAR RADAR</span>
+          <span>RADAR CONE: 15°</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ROW 3: SCROLLING RAW TELEMETRY LOG PANEL -->
+    <section id="log-panel">
+      <div id="log-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-family: var(--font-condensed); font-weight: 700; color: var(--text-bright); letter-spacing: 0.05em;">
+            LIVE PACKET FEED // RX_BUFFER STREAM
+          </span>
+          <span id="log-count-badge" class="term-badge badge-amber">0 ENTRIES</span>
+          <span id="log-scroll-badge" class="term-badge badge-green">AUTO-SCROLL: ON</span>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 4px;">
+          <button id="btn-pause-log" class="btn-term">PAUSE FEED (SPC)</button>
+          <button id="btn-toggle-autoscroll" class="btn-term active">PIN SCROLL</button>
+          <button id="btn-clear-log" class="btn-term">CLEAR</button>
+          <button id="btn-export-csv" class="btn-term" style="border-color: var(--cyan); color: var(--cyan);">EXPORT CSV</button>
+        </div>
+      </div>
+
+      <div id="log-table-wrapper">
+        <table id="log-table">
+          <thead>
+            <tr>
+              <th style="width: 140px;">TIMESTAMP (UTC)</th>
+              <th style="width: 80px;">ENTRY_ID</th>
+              <th style="width: 110px;">TEMP (°C)</th>
+              <th style="width: 110px;">HUMIDITY (%)</th>
+              <th style="width: 110px;">DISTANCE (CM)</th>
+              <th style="width: 220px;">RAW THINGSPEAK PAYLOAD</th>
+              <th style="width: 90px;">SOURCE</th>
+              <th style="width: 80px;">STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="log-table-body">
+            <!-- Dynamically populated rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================================
+       BOTTOM TERMINAL DIAGNOSTICS BAR
+       ======================================================================== -->
+  <footer id="bottom-bar">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="color: var(--amber); font-weight: 700;">SYS_STATUS:</span>
+      <span id="terminal-diag-msg" style="color: var(--text-main);">ENGINE READY // LISTENING FOR TELEMETRY PACKETS</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span>POLL INTERVAL: <b style="color: var(--amber);">15s</b></span>
+      <span>RENDER: <b style="color: var(--green);">CANVAS 60FPS NON-ANIMATED</b></span>
+      <span>SHORTCUTS: <b style="color: var(--cyan);">[F1] HELP</b> | <b style="color: var(--cyan);">[F2] CONFIG</b> | <b style="color: var(--cyan);">[F5] REFRESH</b></span>
+    </div>
+  </footer>
+
+  <!-- ========================================================================
+       MODAL: CHANNEL CONFIGURATION & SETTINGS
+       ======================================================================== -->
+  <div id="config-modal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span>// TERMINAL CHANNEL CONFIGURATION</span>
+        <button id="btn-close-modal" style="color: var(--text-muted); font-size: 16px; cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 10.5px; color: var(--text-muted); line-height: 1.4;">
+          Point this dashboard at your ThingSpeak Channel by entering the Channel ID and optional Read API Key.
+          Values are saved locally in your browser storage.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" for="cfg-channel-id">ThingSpeak Channel ID:</label>
+          <input id="cfg-channel-id" class="form-input" type="text" placeholder="e.g. 1234567 or public ID" autocomplete="off"/>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cfg-api-key">ThingSpeak Read API Key (Leave blank if public):</label>
+          <input id="cfg-api-key" class="form-input" type="text" placeholder="e.g. 16-character alphanumeric key" autocomplete="off"/>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div class="form-group">
+            <label class="form-label" for="cfg-poll-interval">Polling Interval (Seconds):</label>
+            <input id="cfg-poll-interval" class="form-input" type="number" min="5" max="300" value="15"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cfg-results-count">History Depth (Readings):</label>
+            <input id="cfg-results-count" class="form-input" type="number" min="10" max="100" value="50"/>
+          </div>
+        </div>
+
+        <div style="margin-top: 6px; padding: 8px; background: #090c12; border: 1px dashed var(--border-accent); font-size: 10px; color: var(--text-muted);">
+          <span style="color: var(--green); font-weight: 700;">PRESET SIMULATION MODE:</span>
+          If you don't have an active channel with data right now, click <b>"RUN SIMULATOR"</b> to view live synthetic IoT sensor telemetry streaming at 15s intervals.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-modal-demo" class="btn-term" style="border-color: var(--green); color: var(--green);">RUN SIMULATOR</button>
+        <button id="btn-modal-cancel" class="btn-term">CANCEL</button>
+        <button id="btn-modal-save" class="btn-term active">&lt;CONNECT CHANNEL&gt;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: HELP & SHORTCUTS (F1)
+       ======================================================================== -->
+  <div id="help-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(5,7,10,0.85); backdrop-filter: blur(2px); z-index: 999; align-items: center; justify-content: center;">
+    <div class="modal-box" style="border-color: var(--cyan); width: 480px;">
+      <div class="modal-header" style="color: var(--cyan);">
+        <span>// TERMINAL OPERATOR REFERENCE [HELP]</span>
+        <button id="btn-close-help" style="color: var(--text-muted); font-size: 16px; cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body" style="font-size: 10.5px; line-height: 1.5;">
+        <div style="color: var(--amber); font-weight: 700; margin-bottom: 4px;">KEYBOARD COMMANDS:</div>
+        <div><b>&lt;F1&gt;</b> : Open Help &amp; Manual</div>
+        <div><b>&lt;F2&gt;</b> : Open Channel Config Dialog</div>
+        <div><b>&lt;F5&gt;</b> : Trigger immediate ThingSpeak polling cycle</div>
+        <div><b>&lt;SPACE&gt;</b> : Pause / Resume telemetry feed stream</div>
+        <div><b>&lt;ESC&gt;</b> : Close modals / cancel inspect</div>
+        <div style="margin-top: 10px; color: var(--cyan); font-weight: 700;">COMMAND LINE SHORTCUTS (SYS_CMD):</div>
+        <div>Type in top command box and press Enter or &lt;GO&gt;:</div>
+        <div><code>CONFIG</code>, <code>SYNC</code>, <code>PAUSE</code>, <code>RESUME</code>, <code>SIM</code>, <code>CSV</code>, <code>CLEAR</code></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-help-ok" class="btn-term active btn-term-cyan">ACKNOWLEDGE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       CORE JAVASCRIPT ENGINE
+       ======================================================================== -->
+  <script>
+    /* ==========================================================================
+       USER CONFIGURATION (DROP IN YOUR VALUES HERE IF DESIRED)
+       ========================================================================== */
+    const DEFAULT_CONFIG = {
+      // Set your ThingSpeak Channel ID (e.g. '1234567')
+      CHANNEL_ID: '3506638',
+
+      // Set your ThingSpeak Read API Key (leave empty for public channels)
+      READ_API_KEY: 'V51L3W39DZ2I4RDN',
+
+      // Number of recent records to pull (30-50 recommended)
+      RESULTS_LIMIT: 50,
+
+      // Telemetry polling frequency (ThingSpeak public feeds rate limit to ~15s)
+      POLL_INTERVAL_SEC: 15,
+
+      // Enable realistic IoT sensor simulation if no channel is provided
+      AUTO_SIMULATE_IF_EMPTY: false,
+
+      // Audible click sound synthesis on data packets (Web Audio API)
+      AUDIO_ENABLED: false
+    };
+
+    /* ==========================================================================
+       TERMINAL STATE MANAGEMENT
+       ========================================================================== */
+    const State = {
+      config: { ...DEFAULT_CONFIG },
+      isSimulating: false,
+      isPaused: false,
+      autoScroll: true,
+      audioEnabled: false,
+      countdown: DEFAULT_CONFIG.POLL_INTERVAL_SEC,
+      pollTimer: null,
+      countdownTimer: null,
+      historyLength: 30, // visible points in charts (30 or 50)
+      autoScale: { temp: true, hum: true, dist: true },
+
+      // Raw feed store
+      channelInfo: null,
+      feeds: [], // Array of { created_at, entry_id, temp, hum, dist, rawHex, rssi }
+      lastFeed: null,
+      prevFeed: null,
+
+      // Stats
+      stats: {
+        totalPackets: 0,
+        rtt: 0,
+        failedRequests: 0
+      }
+    };
+
+    /* ==========================================================================
+       RETRO AUDIO SYNTHESIZER (NATIVE WEB AUDIO API - ZERO DEPENDENCIES)
+       ========================================================================== */
+    class TerminalAudio {
+      constructor() {
+        this.ctx = null;
+      }
+      init() {
+        if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playTick() {
+        if (!State.audioEnabled || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(1400, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.03);
+          gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.03);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.03);
+        } catch(e) {}
+      }
+      playChirp() {
+        if (!State.audioEnabled || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+          osc.frequency.setValueAtTime(1760, this.ctx.currentTime + 0.04);
+          gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.08);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.08);
+        } catch(e) {}
+      }
+    }
+    const Sound = new TerminalAudio();
+
+    /* ==========================================================================
+       CANVAS HIGH-PERFORMANCE TIME-SERIES CHART RENDERER
+       Crisp 1px hairline rendering, zero animations for true terminal feel.
+       ========================================================================== */
+    class TerminalChart {
+      constructor(canvasId, containerId, tooltipId, colorHex, unit, metricKey) {
+        this.canvas = document.getElementById(canvasId);
+        this.container = document.getElementById(containerId);
+        this.tooltip = document.getElementById(tooltipId);
+        this.ctx = this.canvas.getContext('2d');
+        this.color = colorHex;
+        this.unit = unit;
+        this.metricKey = metricKey;
+        this.crosshairIndex = -1;
+
+        this.setupEvents();
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+      }
+
+      resize() {
+        const rect = this.container.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        this.width = rect.width;
+        this.height = rect.height;
+        this.canvas.width = Math.floor(rect.width * dpr);
+        this.canvas.height = Math.floor(rect.height * dpr);
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        this.render();
+      }
+
+      setupEvents() {
+        this.container.addEventListener('mousemove', (e) => {
+          const rect = this.container.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const data = this.getData();
+          if (data.length < 2) return;
+
+          const step = (this.width - 50) / (data.length - 1);
+          const index = Math.round((mouseX - 40) / step);
+          if (index >= 0 && index < data.length) {
+            this.crosshairIndex = index;
+            this.render();
+            this.showTooltip(e.clientX - rect.left, e.clientY - rect.top, data[index]);
+          }
+        });
+
+        this.container.addEventListener('mouseleave', () => {
+          this.crosshairIndex = -1;
+          this.tooltip.style.display = 'none';
+          this.render();
+        });
+      }
+
+      showTooltip(x, y, pt) {
+        if (!pt || pt.val === null) return;
+        const timeStr = new Date(pt.created_at).toTimeString().substring(0, 8);
+        this.tooltip.innerHTML = `<b>${pt.val.toFixed(2)}${this.unit}</b> @ ${timeStr} [#${pt.entry_id}]`;
+        this.tooltip.style.display = 'block';
+
+        // Constrain tooltip inside viewport
+        const tipWidth = this.tooltip.offsetWidth || 130;
+        let tipX = x + 12;
+        if (tipX + tipWidth > this.width - 10) tipX = x - tipWidth - 12;
+        let tipY = y - 25;
+        if (tipY < 5) tipY = y + 10;
+
+        this.tooltip.style.left = `${tipX}px`;
+        this.tooltip.style.top = `${tipY}px`;
+      }
+
+      getData() {
+        const slice = State.feeds.slice(-State.historyLength);
+        return slice.map(f => ({
+          val: f[this.metricKey],
+          created_at: f.created_at,
+          entry_id: f.entry_id
+        }));
+      }
+
+      render() {
+        const ctx = this.ctx;
+        const w = this.width;
+        const h = this.height;
+        if (!w || !h) return;
+
+        ctx.clearRect(0, 0, w, h);
+
+        const data = this.getData();
+        const validVals = data.filter(d => d.val !== null && !isNaN(d.val)).map(d => d.val);
+
+        if (validVals.length === 0) {
+          ctx.fillStyle = '#4e5668';
+          ctx.font = '11px "JetBrains Mono"';
+          ctx.textAlign = 'center';
+          ctx.fillText('AWAITING TELEMETRY DATA...', w / 2, h / 2);
+          return;
+        }
+
+        // Calculate Min and Max bounds
+        let min = Math.min(...validVals);
+        let max = Math.max(...validVals);
+
+        // Fixed baseline margins if values are flat
+        if (min === max) {
+          min -= 1;
+          max += 1;
+        } else {
+          const pad = (max - min) * 0.12;
+          min -= pad;
+          max += pad;
+        }
+
+        // Update bounds label in footer
+        const boundsEl = document.getElementById(`footer-bounds-${this.metricKey}`);
+        if (boundsEl) boundsEl.textContent = `${min.toFixed(1)}${this.unit} / ${max.toFixed(1)}${this.unit}`;
+
+        const leftPad = 42;
+        const rightPad = 12;
+        const topPad = 16;
+        const btmPad = 22;
+        const plotW = w - leftPad - rightPad;
+        const plotH = h - topPad - btmPad;
+
+        const getY = (val) => topPad + plotH - ((val - min) / (max - min)) * plotH;
+        const getX = (idx) => leftPad + (idx / (data.length - 1)) * plotW;
+
+        // Draw Terminal Grid Lines (Horizontal)
+        const gridSteps = 4;
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#1a202c';
+        ctx.fillStyle = '#64748b';
+        ctx.font = '9px "JetBrains Mono"';
+        ctx.textAlign = 'right';
+
+        for (let i = 0; i <= gridSteps; i++) {
+          const val = min + (i / gridSteps) * (max - min);
+          const y = topPad + plotH - (i / gridSteps) * plotH;
+
+          ctx.beginPath();
+          ctx.setLineDash([2, 4]);
+          ctx.moveTo(leftPad, y);
+          ctx.lineTo(w - rightPad, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillText(val.toFixed(1), leftPad - 5, y + 3);
+        }
+
+        // Draw Time ticks (Vertical)
+        const timeSteps = Math.min(data.length, 5);
+        ctx.textAlign = 'center';
+        for (let i = 0; i < timeSteps; i++) {
+          const dataIdx = Math.floor((i / (timeSteps - 1 || 1)) * (data.length - 1));
+          const x = getX(dataIdx);
+          const item = data[dataIdx];
+          if (item) {
+            const timeStr = new Date(item.created_at).toTimeString().substring(3, 8); // mm:ss
+            ctx.fillText(timeStr, x, h - 6);
+
+            ctx.beginPath();
+            ctx.setLineDash([1, 4]);
+            ctx.moveTo(x, topPad);
+            ctx.lineTo(x, topPad + plotH);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        }
+
+        // Draw Threshold Limits
+        if (this.metricKey === 'temp') {
+          this.drawThresholdLine(getY(28.0), 'UPPER CRIT: 28°C', '#ff3d57');
+          this.drawThresholdLine(getY(18.0), 'LOWER CRIT: 18°C', '#00e5ff');
+        } else if (this.metricKey === 'hum') {
+          this.drawThresholdLine(getY(70.0), 'HIGH HUMIDITY: 70%', '#ff3d57');
+          this.drawThresholdLine(getY(40.0), 'LOW HUMIDITY: 40%', '#ff9800');
+        } else if (this.metricKey === 'dist') {
+          this.drawThresholdLine(getY(30.0), 'PROXIMITY ALERT: 30cm', '#ff3d57');
+        }
+
+        // Fill Shaded Area Beneath Trace
+        ctx.beginPath();
+        let started = false;
+        for (let i = 0; i < data.length; i++) {
+          const pt = data[i];
+          if (pt.val === null || isNaN(pt.val)) continue;
+          const x = getX(i);
+          const y = getY(pt.val);
+          if (!started) {
+            ctx.moveTo(x, topPad + plotH);
+            ctx.lineTo(x, y);
+            started = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        if (started) {
+          ctx.lineTo(getX(data.length - 1), topPad + plotH);
+          ctx.closePath();
+          const grad = ctx.createLinearGradient(0, topPad, 0, topPad + plotH);
+          grad.addColorStop(0, this.color + '26'); // ~15% opacity
+          grad.addColorStop(1, this.color + '00'); // 0% opacity
+          ctx.fillStyle = grad;
+          ctx.fill();
+        }
+
+        // Draw Crisp Vector Line Trace
+        ctx.beginPath();
+        started = false;
+        for (let i = 0; i < data.length; i++) {
+          const pt = data[i];
+          if (pt.val === null || isNaN(pt.val)) continue;
+          const x = getX(i);
+          const y = getY(pt.val);
+          if (!started) {
+            ctx.moveTo(x, y);
+            started = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = 'miter';
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 4;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Draw Point Markers
+        for (let i = 0; i < data.length; i++) {
+          const pt = data[i];
+          if (pt.val === null || isNaN(pt.val)) continue;
+          const x = getX(i);
+          const y = getY(pt.val);
+          ctx.fillStyle = '#0c0e14';
+          ctx.beginPath();
+          ctx.arc(x, y, 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = this.color;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+
+        // Draw Active Interactive Crosshair
+        if (this.crosshairIndex >= 0 && this.crosshairIndex < data.length) {
+          const pt = data[this.crosshairIndex];
+          if (pt.val !== null && !isNaN(pt.val)) {
+            const cx = getX(this.crosshairIndex);
+            const cy = getY(pt.val);
+
+            // Vertical reticle
+            ctx.beginPath();
+            ctx.setLineDash([2, 2]);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.moveTo(cx, topPad);
+            ctx.lineTo(cx, topPad + plotH);
+            ctx.stroke();
+
+            // Horizontal reticle
+            ctx.beginPath();
+            ctx.moveTo(leftPad, cy);
+            ctx.lineTo(w - rightPad, cy);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Reticle Target Dot
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      drawThresholdLine(y, label, strokeColor) {
+        if (y < 16 || y > this.height - 22) return;
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 1;
+        ctx.moveTo(42, y);
+        ctx.lineTo(this.width - 12, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = strokeColor;
+        ctx.font = '8px "JetBrains Mono"';
+        ctx.textAlign = 'right';
+        ctx.fillText(label, this.width - 16, y - 2);
+        ctx.restore();
+      }
+    }
+
+    /* Instantiate the 3 Charts */
+    let chartTemp, chartHum, chartDist;
+
+    /* ==========================================================================
+       DATA INTAKE: THINGSPEAK FETCH & SIMULATOR
+       ========================================================================== */
+    function loadSavedConfig() {
+      try {
+        const saved = localStorage.getItem('BLBRG_IOT_CFG');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          State.config = { ...State.config, ...parsed };
+        }
+      } catch(e) {}
+
+      // Update Config inputs
+      document.getElementById('cfg-channel-id').value = State.config.CHANNEL_ID || '';
+      document.getElementById('cfg-api-key').value = State.config.READ_API_KEY || '';
+      document.getElementById('cfg-poll-interval').value = State.config.POLL_INTERVAL_SEC || 15;
+      document.getElementById('cfg-results-count').value = State.config.RESULTS_LIMIT || 50;
+
+      // Ensure live channel mode is active (NO simulation)
+      State.isSimulating = false;
+    }
+
+    function saveConfig() {
+      const chId = document.getElementById('cfg-channel-id').value.trim();
+      const apiKey = document.getElementById('cfg-api-key').value.trim();
+      const interval = parseInt(document.getElementById('cfg-poll-interval').value, 10) || 15;
+      const count = parseInt(document.getElementById('cfg-results-count').value, 10) || 50;
+
+      State.config.CHANNEL_ID = chId;
+      State.config.READ_API_KEY = apiKey;
+      State.config.POLL_INTERVAL_SEC = Math.max(5, interval);
+      State.config.RESULTS_LIMIT = Math.min(100, Math.max(10, count));
+
+      localStorage.setItem('BLBRG_IOT_CFG', JSON.stringify(State.config));
+
+      if (chId) {
+        State.isSimulating = false;
+        logDiagnostic(`CHANNEL CONFIG APPLIED: #${chId} // ATTEMPTING LIVE HANDSHAKE`);
+      } else {
+        State.isSimulating = true;
+        logDiagnostic(`NO CHANNEL PROVIDED: RUNNING SYNTHETIC TELEMETRY GENERATOR`);
+      }
+
+      updateRibbonHeaders();
+      resetPolling();
+      pollData();
+    }
+
+    function updateRibbonHeaders() {
+      const ribbonCh = document.getElementById('ribbon-channel-id');
+      const ribbonSource = document.getElementById('ribbon-source-url');
+      const modeBadge = document.getElementById('mode-badge');
+
+      if (State.isSimulating) {
+        ribbonCh.textContent = 'SIMULATED-NODE-01';
+        ribbonSource.textContent = 'INTERNAL SYNTHETIC GENERATOR';
+        modeBadge.className = 'term-badge badge-amber';
+        modeBadge.textContent = 'SIMULATION';
+      } else {
+        ribbonCh.textContent = `#${State.config.CHANNEL_ID}`;
+        ribbonSource.textContent = `api.thingspeak.com/channels/${State.config.CHANNEL_ID}`;
+        modeBadge.className = 'term-badge badge-green';
+        modeBadge.textContent = 'THINGSPEAK LIVE';
+      }
+    }
+
+    /* Polling Scheduler */
+    function resetPolling() {
+      clearInterval(State.pollTimer);
+      clearInterval(State.countdownTimer);
+
+      State.countdown = State.config.POLL_INTERVAL_SEC;
+      updateCountdownDisplay();
+
+      State.countdownTimer = setInterval(() => {
+        if (!State.isPaused) {
+          State.countdown--;
+          if (State.countdown < 0) {
+            State.countdown = State.config.POLL_INTERVAL_SEC;
+          }
+          updateCountdownDisplay();
+        }
+      }, 1000);
+
+      State.pollTimer = setInterval(() => {
+        if (!State.isPaused) {
+          pollData();
+        }
+      }, State.config.POLL_INTERVAL_SEC * 1000);
+    }
+
+    function updateCountdownDisplay() {
+      const el = document.getElementById('countdown-timer');
+      if (el) el.textContent = `(${State.countdown}s)`;
+    }
+
+    /* Primary Data Poll Method */
+    async function pollData() {
+      if (State.isPaused) return;
+
+      const beacon = document.getElementById('beacon-dot');
+      const statusText = document.getElementById('conn-status-text');
+
+      beacon.style.background = 'var(--amber)';
+      statusText.textContent = 'POLLING';
+      statusText.style.color = 'var(--amber)';
+
+      const startTime = performance.now();
+
+      if (State.isSimulating) {
+        // Run simulated generation
+        setTimeout(() => {
+          generateSimulatedData();
+          State.stats.rtt = Math.round(performance.now() - startTime) + 4;
+          handleSuccess();
+        }, 120);
+        return;
+      }
+
+      // Fetch from ThingSpeak JSON Feed API
+      const { CHANNEL_ID, READ_API_KEY, RESULTS_LIMIT } = State.config;
+      let url = `https://api.thingspeak.com/channels/${encodeURIComponent(CHANNEL_ID)}/feeds.json?results=${RESULTS_LIMIT}`;
+      if (READ_API_KEY && READ_API_KEY.trim() !== '') {
+        url += `&api_key=${encodeURIComponent(READ_API_KEY.trim())}`;
+      }
+
+      try {
+        const resp = await fetch(url, { cache: 'no-store' });
+        const latency = Math.round(performance.now() - startTime);
+        State.stats.rtt = latency;
+
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+        }
+
+        const data = await resp.json();
+        processThingSpeakData(data);
+        handleSuccess();
+      } catch (err) {
+        handleError(err);
+      }
+    }
+
+    function handleSuccess() {
+      const beacon = document.getElementById('beacon-dot');
+      const statusText = document.getElementById('conn-status-text');
+      beacon.style.background = 'var(--green)';
+      statusText.textContent = State.isSimulating ? 'SIM ACTIVE' : 'LIVE 15s';
+      statusText.style.color = 'var(--green)';
+      document.getElementById('stat-rtt').textContent = `${State.stats.rtt}ms`;
+      document.getElementById('stat-loss').textContent = '0.0%';
+
+      Sound.playTick();
+    }
+
+    function handleError(err) {
+      State.stats.failedRequests++;
+      const beacon = document.getElementById('beacon-dot');
+      const statusText = document.getElementById('conn-status-text');
+      beacon.style.background = 'var(--red)';
+      statusText.textContent = 'DISCONNECTED';
+      statusText.style.color = 'var(--red)';
+
+      const msg = `RX_ERROR: ${err.message || 'NET_UNREACHABLE'} (RETRYING IN ${State.config.POLL_INTERVAL_SEC}s)`;
+      logDiagnostic(msg, true);
+
+      // Append error row to log
+      appendLogRow({
+        created_at: new Date().toISOString(),
+        entry_id: 'ERR',
+        temp: null,
+        hum: null,
+        dist: null,
+        rawHex: 'FF FF ERR 404',
+        rssi: '-- dBm',
+        status: 'FAIL'
+      });
+    }
+
+    /* Process Ingested ThingSpeak JSON Payload */
+    function processThingSpeakData(json) {
+      if (!json || !json.feeds) return;
+
+      State.channelInfo = json.channel;
+      const formatted = json.feeds.map(item => {
+        const t = parseFloat(item.field1);
+        const h = parseFloat(item.field2);
+        const d = parseFloat(item.field3);
+        const payloadStr = `F1:${item.field1 ?? '--'} | F2:${item.field2 ?? '--'} | F3:${item.field3 ?? '--'}`;
+        return {
+          created_at: item.created_at,
+          entry_id: item.entry_id,
+          temp: isNaN(t) ? null : t,
+          hum: isNaN(h) ? null : h,
+          dist: isNaN(d) ? null : d,
+          rawPayload: payloadStr,
+          source: 'RPI_NODE',
+          status: '200 OK'
+        };
+      });
+
+      // Update feeds buffer
+      State.feeds = formatted;
+      if (formatted.length > 0) {
+        State.prevFeed = State.lastFeed || (formatted.length > 1 ? formatted[formatted.length - 2] : formatted[0]);
+        State.lastFeed = formatted[formatted.length - 1];
+        updateAllUI();
+      } else {
+        logDiagnostic(`CHANNEL #${State.config.CHANNEL_ID} CONNECTED // WAITING FOR RASPBERRY PI TRANSMISSION FROM THONNY`);
+        const ribbonCh = document.getElementById('ribbon-channel-id');
+        if (ribbonCh && State.channelInfo) {
+          ribbonCh.textContent = `#${State.config.CHANNEL_ID} [${State.channelInfo.name}]`;
+        }
+        const tbody = document.getElementById('log-table-body');
+        if (tbody && tbody.children.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 18px; font-family: var(--font-mono); font-size: 11px;">[STANDBY] CHANNEL #3506638 CONNECTED. RUN SCRIPT IN THONNY TO POST SENSOR READINGS...</td></tr>`;
+        }
+      }
+    }
+
+    /* Realistic IoT Telemetry Simulator */
+    let simEntrySeq = 1420;
+    let baseTemp = 24.5;
+    let baseHum = 58.0;
+    let baseDist = 142.0;
+
+    function generateSimulatedData() {
+      const now = new Date();
+
+      // If feeds is empty, backfill 30 historical points
+      if (State.feeds.length === 0) {
+        const hist = [];
+        for (let i = 30; i >= 1; i--) {
+          const tDate = new Date(now.getTime() - i * State.config.POLL_INTERVAL_SEC * 1000);
+          baseTemp += (Math.random() - 0.49) * 0.4;
+          baseHum += (Math.random() - 0.50) * 0.7;
+          baseDist += (Math.random() - 0.50) * 1.5;
+
+          const tVal = +(baseTemp.toFixed(2));
+          const hVal = +(Math.min(95, Math.max(10, baseHum)).toFixed(1));
+          const dVal = +(Math.min(400, Math.max(5, baseDist)).toFixed(1));
+
+          hist.push({
+            created_at: tDate.toISOString(),
+            entry_id: ++simEntrySeq,
+            temp: tVal,
+            hum: hVal,
+            dist: dVal,
+            rawHex: generateSyntheticHex(tVal, hVal, dVal),
+            rssi: `${-52 - Math.floor(Math.random() * 8)} dBm`,
+            status: 'PASS'
+          });
+        }
+        State.feeds = hist;
+      } else {
+        // Append new live point
+        baseTemp += (Math.random() - 0.48) * 0.35;
+        baseHum += (Math.random() - 0.50) * 0.6;
+        // occasional ultrasonic obstacle step
+        if (Math.random() < 0.15) {
+          baseDist = 28.5 + Math.random() * 10; // person walked by
+        } else {
+          baseDist += (142.0 - baseDist) * 0.2 + (Math.random() - 0.5) * 1.8;
+        }
+
+        const tVal = +(baseTemp.toFixed(2));
+        const hVal = +(Math.min(95, Math.max(10, baseHum)).toFixed(1));
+        const dVal = +(Math.min(400, Math.max(5, baseDist)).toFixed(1));
+
+        const newPoint = {
+          created_at: now.toISOString(),
+          entry_id: ++simEntrySeq,
+          temp: tVal,
+          hum: hVal,
+          dist: dVal,
+          rawHex: generateSyntheticHex(tVal, hVal, dVal),
+          rssi: `${-51 - Math.floor(Math.random() * 7)} dBm`,
+          status: 'PASS'
+        };
+
+        State.feeds.push(newPoint);
+        if (State.feeds.length > State.config.RESULTS_LIMIT) {
+          State.feeds.shift();
+        }
+      }
+
+      if (State.feeds.length > 0) {
+        State.prevFeed = State.lastFeed || (State.feeds.length > 1 ? State.feeds[State.feeds.length - 2] : State.feeds[0]);
+        State.lastFeed = State.feeds[State.feeds.length - 1];
+      }
+
+      updateAllUI();
+    }
+
+    function generateSyntheticHex(t, h, d) {
+      const b1 = Math.floor(Math.abs(t || 0) * 10) & 0xFF;
+      const b2 = Math.floor(Math.abs(h || 0) * 2) & 0xFF;
+      const b3 = Math.floor(Math.abs(d || 0)) & 0xFF;
+      const crc = (b1 ^ b2 ^ b3 ^ 0xAA) & 0xFF;
+      return `AA 03 ${b1.toString(16).padStart(2,'0').toUpperCase()} ${b2.toString(16).padStart(2,'0').toUpperCase()} ${b3.toString(16).padStart(2,'0').toUpperCase()} ${crc.toString(16).padStart(2,'0').toUpperCase()} 55`;
+    }
+
+    /* ==========================================================================
+       UI REFRESH CONTROLLER
+       Updates numeric tickers, color-coded deltas, statistics, and canvas charts.
+       ========================================================================== */
+    function updateAllUI() {
+      if (!State.lastFeed) return;
+
+      const cur = State.lastFeed;
+      const prev = State.prevFeed || cur;
+
+      // 1. Temperature Card
+      if (cur.temp !== null) {
+        document.getElementById('val-temp').textContent = cur.temp.toFixed(2);
+        const deltaT = cur.temp - (prev.temp !== null ? prev.temp : cur.temp);
+        const pctT = prev.temp ? (deltaT / prev.temp) * 100 : 0;
+        updateDeltaBadge('delta-temp-badge', 'delta-temp-arrow', 'delta-temp-text', deltaT, pctT, '°C');
+
+        // Position range needle (15°C to 35°C span)
+        const needlePos = Math.min(100, Math.max(0, ((cur.temp - 15) / 20) * 100));
+        document.getElementById('needle-temp').style.left = `${needlePos}%`;
+
+        // Nominal status badge
+        const badge = document.getElementById('temp-status-badge');
+        if (cur.temp > 28.0) {
+          badge.className = 'term-badge badge-red';
+          badge.textContent = 'HIGH TEMP ALERT';
+        } else if (cur.temp < 18.0) {
+          badge.className = 'term-badge badge-cyan';
+          badge.textContent = 'COLD RUNNING';
+        } else {
+          badge.className = 'term-badge badge-amber';
+          badge.textContent = 'NOMINAL';
+        }
+      }
+
+      // 2. Humidity Card
+      if (cur.hum !== null) {
+        document.getElementById('val-hum').textContent = cur.hum.toFixed(1);
+        const deltaH = cur.hum - (prev.hum !== null ? prev.hum : cur.hum);
+        const pctH = prev.hum ? (deltaH / prev.hum) * 100 : 0;
+        updateDeltaBadge('delta-hum-badge', 'delta-hum-arrow', 'delta-hum-text', deltaH, pctH, '%');
+
+        // Position needle (20% to 90% span)
+        const needlePosH = Math.min(100, Math.max(0, ((cur.hum - 20) / 70) * 100));
+        document.getElementById('needle-hum').style.left = `${needlePosH}%`;
+
+        // Calculate Dew Point (Magnus-Tetens formula)
+        if (cur.temp !== null) {
+          const a = 17.27, b = 237.7;
+          const alpha = ((a * cur.temp) / (b + cur.temp)) + Math.log(cur.hum / 100.0);
+          const dewPoint = (b * alpha) / (a - alpha);
+          document.getElementById('dew-pt').textContent = `${dewPoint.toFixed(1)}°C`;
+        }
+
+        const badgeH = document.getElementById('hum-status-badge');
+        if (cur.hum > 70) {
+          badgeH.className = 'term-badge badge-red';
+          badgeH.textContent = 'HIGH HUMIDITY';
+        } else {
+          badgeH.className = 'term-badge badge-cyan';
+          badgeH.textContent = 'OPTIMAL RH';
+        }
+      }
+
+      // 3. Distance Card
+      if (cur.dist !== null) {
+        document.getElementById('val-dist').textContent = cur.dist.toFixed(1);
+        const deltaD = cur.dist - (prev.dist !== null ? prev.dist : cur.dist);
+        const pctD = prev.dist ? (deltaD / prev.dist) * 100 : 0;
+        updateDeltaBadge('delta-dist-badge', 'delta-dist-arrow', 'delta-dist-text', deltaD, pctD, 'cm');
+
+        // Position needle (10cm to 250cm span)
+        const needlePosD = Math.min(100, Math.max(0, ((cur.dist - 10) / 240) * 100));
+        document.getElementById('needle-dist').style.left = `${needlePosD}%`;
+
+        // Ultrasonic Echo Time (sound speed ~343 m/s)
+        const echoMs = (cur.dist / 17.15);
+        document.getElementById('echo-time').textContent = `${echoMs.toFixed(1)}ms`;
+
+        const badgeD = document.getElementById('dist-status-badge');
+        if (cur.dist < 30.0) {
+          badgeD.className = 'term-badge badge-red';
+          badgeD.textContent = 'OBJECT PROXIMITY [WARN]';
+        } else {
+          badgeD.className = 'term-badge badge-green';
+          badgeD.textContent = 'TARGET IN CONE';
+        }
+      }
+
+      // Calculate Min, Max, Avg, Sigma over visible buffer
+      calculateMetrics();
+
+      // Render Charts
+      if (chartTemp) chartTemp.render();
+      if (chartHum) chartHum.render();
+      if (chartDist) chartDist.render();
+
+      // Append newest item to Log Table
+      renderLatestLogEntry(cur);
+
+      // Ribbon stats
+      document.getElementById('stat-entries').textContent = State.feeds.length;
+    }
+
+    function updateDeltaBadge(badgeId, arrowId, textId, delta, pct, unit) {
+      const badge = document.getElementById(badgeId);
+      const arrow = document.getElementById(arrowId);
+      const text = document.getElementById(textId);
+
+      const sign = delta > 0 ? '+' : '';
+      text.textContent = `${sign}${delta.toFixed(2)}${unit} (${sign}${pct.toFixed(1)}%)`;
+
+      if (Math.abs(delta) < 0.001) {
+        arrow.textContent = '■';
+        badge.className = 'ticker-delta badge-muted';
+      } else if (delta > 0) {
+        arrow.textContent = '▲';
+        badge.className = 'ticker-delta badge-green';
+      } else {
+        arrow.textContent = '▼';
+        badge.className = 'ticker-delta badge-red';
+      }
+    }
+
+    function calculateMetrics() {
+      const slice = State.feeds.slice(-State.historyLength);
+
+      function calc(vals) {
+        const clean = vals.filter(v => v !== null && !isNaN(v));
+        if (clean.length === 0) return { min: '--', max: '--', avg: '--', sigma: '--' };
+        const min = Math.min(...clean);
+        const max = Math.max(...clean);
+        const avg = clean.reduce((s, v) => s + v, 0) / clean.length;
+        const variance = clean.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / clean.length;
+        const sigma = Math.sqrt(variance);
+        return {
+          min: min.toFixed(1),
+          max: max.toFixed(1),
+          avg: avg.toFixed(1),
+          sigma: sigma.toFixed(2)
+        };
+      }
+
+      const mTemp = calc(slice.map(f => f.temp));
+      document.getElementById('min-temp').textContent = mTemp.min;
+      document.getElementById('max-temp').textContent = mTemp.max;
+      document.getElementById('avg-temp').textContent = mTemp.avg;
+      document.getElementById('sigma-temp').textContent = mTemp.sigma;
+
+      const mHum = calc(slice.map(f => f.hum));
+      document.getElementById('min-hum').textContent = mHum.min;
+      document.getElementById('max-hum').textContent = mHum.max;
+      document.getElementById('avg-hum').textContent = mHum.avg;
+
+      const mDist = calc(slice.map(f => f.dist));
+      document.getElementById('min-dist').textContent = mDist.min;
+      document.getElementById('max-dist').textContent = mDist.max;
+      document.getElementById('avg-dist').textContent = mDist.avg;
+    }
+
+    /* Log Stream Renderer */
+    function renderLatestLogEntry(entry) {
+      appendLogRow(entry);
+    }
+
+    function appendLogRow(f) {
+      const tbody = document.getElementById('log-table-body');
+      const tr = document.createElement('tr');
+      const timeStr = f.created_at ? new Date(f.created_at).toTimeString().substring(0, 8) : '--:--:--';
+
+      tr.innerHTML = `
+        <td class="cell-mono" style="color: var(--amber); font-weight: 700;">${timeStr}</td>
+        <td class="cell-mono" style="color: var(--text-muted);">#${f.entry_id}</td>
+        <td class="cell-mono" style="color: var(--amber);">${f.temp !== null ? f.temp.toFixed(2) + ' °C' : '--'}</td>
+        <td class="cell-mono" style="color: var(--cyan);">${f.hum !== null ? f.hum.toFixed(1) + ' %' : '--'}</td>
+        <td class="cell-mono" style="color: var(--green);">${f.dist !== null ? f.dist.toFixed(1) + ' cm' : '--'}</td>
+        <td class="cell-mono" style="color: #cbd5e1; font-size: 10px;">${f.rawPayload || '--'}</td>
+        <td class="cell-mono" style="color: var(--text-muted);">${f.source || 'RPI_NODE'}</td>
+        <td><span class="term-badge ${String(f.status).includes('FAIL') ? 'badge-red' : 'badge-green'}">${f.status}</span></td>
+      `;
+
+      tbody.appendChild(tr);
+
+      // Keep max 200 rows in DOM
+      if (tbody.children.length > 200) {
+        tbody.removeChild(tbody.firstChild);
+      }
+
+      document.getElementById('log-count-badge').textContent = `${tbody.children.length} ENTRIES`;
+
+      if (State.autoScroll) {
+        const wrapper = document.getElementById('log-table-wrapper');
+        wrapper.scrollTop = wrapper.scrollHeight;
+      }
+    }
+
+    function logDiagnostic(msg, isError = false) {
+      const diagEl = document.getElementById('terminal-diag-msg');
+      if (diagEl) {
+        diagEl.textContent = msg;
+        diagEl.style.color = isError ? 'var(--red)' : 'var(--text-main)';
+      }
+    }
+
+    /* ==========================================================================
+       COMMAND PARSER (SYS_CMD)
+       ========================================================================== */
+    function executeCommand(raw) {
+      const cmd = (raw || '').trim().toUpperCase();
+      if (!cmd) return;
+
+      Sound.playTick();
+
+      if (cmd.startsWith('CONFIG') || cmd.includes('CONF')) {
+        openConfigModal();
+      } else if (cmd === 'REFRESH' || cmd === 'SYNC' || cmd.includes('GO')) {
+        pollData();
+      } else if (cmd === 'PAUSE') {
+        togglePause(true);
+      } else if (cmd === 'RESUME') {
+        togglePause(false);
+      } else if (cmd === 'SIM' || cmd === 'DEMO') {
+        State.isSimulating = true;
+        updateRibbonHeaders();
+        pollData();
+      } else if (cmd === 'CSV' || cmd === 'EXPORT') {
+        exportCSV();
+      } else if (cmd === 'CLEAR') {
+        document.getElementById('log-table-body').innerHTML = '';
+        logDiagnostic('BUFFER STREAM CLEARED');
+      } else if (cmd === 'HELP') {
+        openHelpModal();
+      } else {
+        logDiagnostic(`SYS_CMD [${cmd}] UNRECOGNIZED. TYPE 'HELP' FOR MANUAL.`);
+      }
+    }
+
+    function togglePause(forcedState) {
+      State.isPaused = (typeof forcedState === 'boolean') ? forcedState : !State.isPaused;
+      const pauseBtn = document.getElementById('btn-pause-log');
+      const beacon = document.getElementById('beacon-dot');
+      const statusText = document.getElementById('conn-status-text');
+
+      if (State.isPaused) {
+        pauseBtn.classList.add('active');
+        pauseBtn.textContent = 'RESUME (SPC)';
+        beacon.style.background = 'var(--text-muted)';
+        statusText.textContent = 'FEED PAUSED';
+        statusText.style.color = 'var(--text-muted)';
+        logDiagnostic('LIVE TELEMETRY STREAM PAUSED BY OPERATOR');
+      } else {
+        pauseBtn.classList.remove('active');
+        pauseBtn.textContent = 'PAUSE FEED (SPC)';
+        beacon.style.background = 'var(--green)';
+        statusText.textContent = 'LIVE 15s';
+        statusText.style.color = 'var(--green)';
+        logDiagnostic('LIVE TELEMETRY STREAM RESUMED');
+        pollData();
+      }
+    }
+
+    function exportCSV() {
+      if (State.feeds.length === 0) {
+        alert('No telemetry records available to export.');
+        return;
+      }
+      let csv = 'Timestamp,EntryID,Temperature_C,Humidity_Pct,Distance_cm,RawHex,RSSI\n';
+      State.feeds.forEach(f => {
+        csv += `"${f.created_at}",${f.entry_id},${f.temp},${f.hum},${f.dist},"${f.rawHex}","${f.rssi}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `telemetry_stream_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      logDiagnostic(`EXPORTED ${State.feeds.length} TELEMETRY RECORDS TO CSV`);
+    }
+
+    /* Modal Controllers */
+    function openConfigModal() {
+      document.getElementById('config-modal').style.display = 'flex';
+      document.getElementById('cfg-channel-id').focus();
+    }
+    function closeConfigModal() {
+      document.getElementById('config-modal').style.display = 'none';
+    }
+    function openHelpModal() {
+      document.getElementById('help-modal').style.display = 'flex';
+    }
+    function closeHelpModal() {
+      document.getElementById('help-modal').style.display = 'none';
+    }
+
+    /* ==========================================================================
+       EVENT LISTENERS & LIFECYCLE
+       ========================================================================== */
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. Initialize Clocks
+      function updateClocks() {
+        const now = new Date();
+        const utc = now.toUTCString().split(' ')[4] || now.toISOString().substr(11, 8);
+        document.getElementById('clock-utc').textContent = utc;
+
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        document.getElementById('clock-local').textContent = `${h}:${m}:${s}`;
+      }
+      setInterval(updateClocks, 1000);
+      updateClocks();
+
+      // 2. Initialize Charts
+      chartTemp = new TerminalChart('canvas-temp', 'container-chart-temp', 'tooltip-temp', '#ff9800', '°C', 'temp');
+      chartHum  = new TerminalChart('canvas-hum',  'container-chart-hum',  'tooltip-hum',  '#00e5ff', '%',  'hum');
+      chartDist = new TerminalChart('canvas-dist', 'container-chart-dist', 'tooltip-dist', '#00e676', 'cm', 'dist');
+
+      // 3. Load Config
+      loadSavedConfig();
+      updateRibbonHeaders();
+
+      // 4. Setup Chart Length Buttons
+      document.querySelectorAll('.btn-chart-len').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const len = parseInt(e.target.dataset.len, 10);
+          State.historyLength = len;
+          document.querySelectorAll('.btn-chart-len').forEach(b => {
+            b.classList.toggle('active', parseInt(b.dataset.len, 10) === len);
+          });
+          document.getElementById('stat-buffer').textContent = `${len} PTS`;
+          calculateMetrics();
+          chartTemp.render();
+          chartHum.render();
+          chartDist.render();
+        });
+      });
+
+      // 5. Setup Action Buttons
+      document.getElementById('btn-go').addEventListener('click', () => {
+        const input = document.getElementById('terminal-input');
+        executeCommand(input.value);
+      });
+      document.getElementById('terminal-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          executeCommand(e.target.value);
+        }
+      });
+
+      document.getElementById('btn-refresh-now').addEventListener('click', () => pollData());
+      document.getElementById('btn-open-config').addEventListener('click', openConfigModal);
+      document.getElementById('btn-close-modal').addEventListener('click', closeConfigModal);
+      document.getElementById('btn-modal-cancel').addEventListener('click', closeConfigModal);
+      document.getElementById('btn-modal-save').addEventListener('click', () => {
+        saveConfig();
+        closeConfigModal();
+      });
+      document.getElementById('btn-modal-demo').addEventListener('click', () => {
+        document.getElementById('cfg-channel-id').value = '';
+        saveConfig();
+        closeConfigModal();
+      });
+
+      document.getElementById('btn-close-help').addEventListener('click', closeHelpModal);
+      document.getElementById('btn-help-ok').addEventListener('click', closeHelpModal);
+
+      document.getElementById('btn-pause-log').addEventListener('click', () => togglePause());
+      document.getElementById('btn-clear-log').addEventListener('click', () => {
+        document.getElementById('log-table-body').innerHTML = '';
+        logDiagnostic('BUFFER STREAM CLEARED');
+      });
+      document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+
+      document.getElementById('btn-toggle-autoscroll').addEventListener('click', (e) => {
+        State.autoScroll = !State.autoScroll;
+        e.target.classList.toggle('active', State.autoScroll);
+        document.getElementById('log-scroll-badge').textContent = `AUTO-SCROLL: ${State.autoScroll ? 'ON' : 'OFF'}`;
+        document.getElementById('log-scroll-badge').className = `term-badge ${State.autoScroll ? 'badge-green' : 'badge-muted'}`;
+      });
+
+      // Sound toggle
+      document.getElementById('btn-audio-toggle').addEventListener('click', () => {
+        Sound.init();
+        State.audioEnabled = !State.audioEnabled;
+        const icon = document.getElementById('audio-icon');
+        const btn = document.getElementById('btn-audio-toggle');
+        icon.textContent = State.audioEnabled ? 'AUDIO: ON' : 'AUDIO: OFF';
+        btn.classList.toggle('active', State.audioEnabled);
+        if (State.audioEnabled) Sound.playChirp();
+      });
+
+      // Keyboard Shortcuts
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') {
+          if (e.key === 'Escape') e.target.blur();
+          return;
+        }
+        if (e.key === 'F1') {
+          e.preventDefault();
+          openHelpModal();
+        } else if (e.key === 'F2') {
+          e.preventDefault();
+          openConfigModal();
+        } else if (e.key === 'F5') {
+          e.preventDefault();
+          pollData();
+        } else if (e.code === 'Space') {
+          e.preventDefault();
+          togglePause();
+        } else if (e.key === 'Escape') {
+          closeConfigModal();
+          closeHelpModal();
+        }
+      });
+
+      // 6. Start Polling Cycle
+      resetPolling();
+      pollData();
+    });
+  </script>
+</body>
+</html>
